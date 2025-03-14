@@ -367,32 +367,27 @@ func (p *Plugin) GetNewHttpClient() {
 // }
 
 func (p *Plugin) SetSslCert() {
+	fmt.Println("370")
 	if p.IgnoreSsl {
 		return
 	}
 
 	tlsConfig := &tls.Config{}
 
-	// Load Root Certificates from File Paths
+	// ✅ Load Root CA Certificates (if provided)
 	if p.RootCertPaths != "" {
-		caCertPool := x509.NewCertPool()
-		certPaths := strings.Split(p.RootCertPaths, ",")
-		for _, certPath := range certPaths {
-			certPath = strings.TrimSpace(certPath)
-			caCert, err := os.ReadFile(certPath)
-			if err != nil {
-				LogPrintln(p, "Failed to read root certificate:", certPath, err)
-				continue
-			}
-			if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
-				LogPrintln(p, "Failed to append root certificate:", certPath)
-			}
+		fmt.Println("378")
+		caCertPool, err := p.LoadCACertificates(p.RootCertPaths)
+		if err != nil {
+			fmt.Println("Failed to load CA certificates:", err)
+			return
 		}
 		tlsConfig.RootCAs = caCertPool
 	}
 
 	// Load Trust Store (JKS) - Placeholder (Java Keystore Handling Required)
 	if p.TrustStorePath != "" && p.TrustStorePassword != "" {
+		fmt.Println("399")
 		LogPrintln(p, "Loading trust store from:", p.TrustStorePath)
 		// ⚠️ Note: JKS handling requires additional logic (Java Keystore parsing)
 	}
@@ -486,6 +481,7 @@ func (p *Plugin) ValidateArgs() error {
 
 	// ✅ Ensure only one type of certificate parameter is used
 	if p.RootCertPaths != "" && p.TrustStorePath != "" {
+		fmt.Println("493")
 		return errors.New("Cannot use both root_cert_paths and trust_store_path at the same time")
 	}
 
@@ -692,6 +688,7 @@ func (p *PluginInputParams) EmitCommandLine() (string, string) {
 }
 
 func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) {
+	fmt.Println("701")
 	// Load system CA pool
 	sysCertPool, err := x509.SystemCertPool()
 	if err != nil {
@@ -701,6 +698,7 @@ func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) 
 
 	// Load custom CA if provided
 	if caCertPaths == "" {
+		fmt.Println("710")
 		return sysCertPool, nil
 	}
 

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"x/y/plugin"
@@ -15,7 +16,7 @@ import (
 )
 
 func main() {
-
+	fmt.Println("Jeevan Test image")
 	logInit()
 
 	logrus.SetFormatter(new(formatter))
