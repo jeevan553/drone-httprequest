@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -52,6 +53,9 @@ type PluginInputParams struct {
 	MultiPartName      string `envconfig:"PLUGIN_MULTIPART_NAME"`
 	WrapAsMultipart    bool   `envconfig:"PLUGIN_WRAP_AS_MULTIPART"`
 	SslCertPath        string `envconfig:"PLUGIN_SSL_CERT_PATH"`
+	RootCertPaths      string `envconfig:"PLUGIN_ROOT_CERT_PATHS"`      // ✅ New Parameter (comma-separated cert paths)
+	TrustStorePath     string `envconfig:"PLUGIN_TRUST_STORE_PATH"`     // ✅ New Parameter (custom trust store path)
+	TrustStorePassword string `envconfig:"PLUGIN_TRUST_STORE_PASSWORD"` /// ✅ New Parameter (TrustStorePassword)
 }
 
 type PluginProcessingInfo struct {
@@ -356,9 +360,48 @@ func (p *Plugin) GetNewHttpClient() {
 	}
 }
 
+// func (p *Plugin) SetSslCert() {
+// 	if p.AuthCert == "" || p.IgnoreSsl {
+// 		return
+// 	}
+// }
+
 func (p *Plugin) SetSslCert() {
-	if p.AuthCert == "" || p.IgnoreSsl {
+	if p.IgnoreSsl {
 		return
+	}
+
+	tlsConfig := &tls.Config{}
+
+	// Load Root Certificates from File Paths
+	if p.RootCertPaths != "" {
+		caCertPool := x509.NewCertPool()
+		certPaths := strings.Split(p.RootCertPaths, ",")
+		for _, certPath := range certPaths {
+			certPath = strings.TrimSpace(certPath)
+			caCert, err := os.ReadFile(certPath)
+			if err != nil {
+				LogPrintln(p, "Failed to read root certificate:", certPath, err)
+				continue
+			}
+			if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+				LogPrintln(p, "Failed to append root certificate:", certPath)
+			}
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	// Load Trust Store (JKS) - Placeholder (Java Keystore Handling Required)
+	if p.TrustStorePath != "" && p.TrustStorePassword != "" {
+		LogPrintln(p, "Loading trust store from:", p.TrustStorePath)
+		// ⚠️ Note: JKS handling requires additional logic (Java Keystore parsing)
+	}
+
+	// Apply the TLS Config
+	p.httpClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
 	}
 }
 
@@ -439,6 +482,11 @@ func (p *Plugin) ValidateArgs() error {
 	if p.ValidateAuthCert() != nil {
 		LogPrintln(p, "certificate file not found")
 		return errors.New("certificate file not found")
+	}
+
+	// ✅ Ensure only one type of certificate parameter is used
+	if p.RootCertPaths != "" && p.TrustStorePath != "" {
+		return errors.New("Cannot use both root_cert_paths and trust_store_path at the same time")
 	}
 
 	return nil
@@ -641,6 +689,35 @@ func (p *Plugin) ValidateHeader(headerStr string) error {
 
 func (p *PluginInputParams) EmitCommandLine() (string, string) {
 	return EmitCommandLineForPluginStruct(*p)
+}
+
+func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) {
+	// Load system CA pool
+	sysCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		fmt.Println("Warning: Failed to load system CA certificates:", err)
+		sysCertPool = x509.NewCertPool()
+	}
+
+	// Load custom CA if provided
+	if caCertPaths == "" {
+		return sysCertPool, nil
+	}
+
+	caCertPool := x509.NewCertPool()
+	certPaths := strings.Split(caCertPaths, ",")
+	for _, certPath := range certPaths {
+		certPath = strings.TrimSpace(certPath)
+		caCert, err := os.ReadFile(certPath)
+		if err != nil {
+			fmt.Println("Failed to read root certificate:", certPath, err)
+			continue
+		}
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			fmt.Println("Failed to append root certificate:", certPath)
+		}
+	}
+	return caCertPool, nil
 }
 
 //
