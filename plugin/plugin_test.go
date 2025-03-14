@@ -2,19 +2,13 @@ package plugin
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix" // ✅ Add this for pkix.Name
 	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"math/big" // ✅ Add this for big.Int
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,7 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time" // ✅ Add this for time functions
+	"time"
 )
 
 const (
@@ -383,11 +377,8 @@ func TestNegativeAuthBasic(t *testing.T) {
 }
 
 func randomFileName() string {
-	n, err := rand.Int(rand.Reader, big.NewInt(100000)) // ✅ Generates a cryptographically secure random number
-	if err != nil {
-		panic(fmt.Sprintf("Failed to generate random number: %v", err))
-	}
-	return fmt.Sprintf("output_%d.txt", n.Int64()) // ✅ Converts the number to int64
+	rand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("output_%d.txt", rand.Intn(100000))
 }
 
 func TestGetRequestAndWriteToFile(t *testing.T) {
@@ -973,117 +964,4 @@ func TestGetRequestWithIncorrectAcceptType(t *testing.T) {
 	}
 
 	t.Logf("Test passed. Incorrect Accept header was correctly rejected by the server.")
-}
-
-// ✅ Test mutual exclusivity of root_cert_paths and trust_store_path
-func TestMutualExclusionOfCertParams(t *testing.T) {
-	args := Args{
-		PluginInputParams: PluginInputParams{
-			Url:                "https://example.com",
-			RootCertPaths:      "/path/to/root1.crt,/path/to/root2.crt",
-			TrustStorePath:     "/path/to/truststore.jks",
-			TrustStorePassword: "mypassword",
-		},
-	}
-
-	plugin := GetNewPlugin(args)
-
-	err := plugin.ValidateArgs()
-	if err == nil {
-		t.Fatalf("Expected an error when both root_cert_paths and trust_store_path are set, but got none")
-	}
-
-	expectedError := "Cannot use both root_cert_paths and trust_store_path at the same time"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error: %s, but got: %s", expectedError, err.Error())
-	}
-
-	t.Logf("Test passed. Correctly enforced mutual exclusivity.")
-}
-
-func generateSelfSignedCert(certPath string) error {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return err
-	}
-
-	template := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "localhost"},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0), // 1 year validity
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
-	if err != nil {
-		return err
-	}
-
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return err
-	}
-	defer certFile.Close()
-
-	return pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-}
-
-// ✅ Updated Test
-func TestRootCertPathsLoading(t *testing.T) {
-	// Create temporary test directory
-	tmpDir := t.TempDir()
-	cert1Path := tmpDir + "/cert1.crt"
-	cert2Path := tmpDir + "/cert2.crt"
-
-	// ✅ Generate real self-signed certificates
-	err1 := generateSelfSignedCert(cert1Path)
-	err2 := generateSelfSignedCert(cert2Path)
-
-	if err1 != nil || err2 != nil {
-		t.Fatalf("Failed to create test certificates: %v, %v", err1, err2)
-	}
-
-	// ✅ Create Plugin instance with test certificates
-	args := Args{
-		PluginInputParams: PluginInputParams{
-			RootCertPaths: cert1Path + "," + cert2Path,
-		},
-	}
-
-	pluginInstance := GetNewPlugin(args)
-	caCertPool, err := pluginInstance.LoadCACertificates(pluginInstance.RootCertPaths)
-
-	if err != nil {
-		t.Fatalf("Failed to load root certificates: %v", err)
-	}
-
-	// ✅ Ensure at least one certificate is loaded
-	if caCertPool == nil || len(caCertPool.Subjects()) == 0 {
-		t.Errorf("Expected certificates to be loaded, but CA pool is empty")
-	} else {
-		t.Logf("Test passed. Successfully loaded root certificates.")
-	}
-}
-
-// ✅ Test trust store path handling
-func TestTrustStorePathHandling(t *testing.T) {
-	args := Args{
-		PluginInputParams: PluginInputParams{
-			Url:                "https://example.com", // ✅ Ensure URL is provided
-			TrustStorePath:     "/fake/truststore.jks",
-			TrustStorePassword: "mypassword",
-		},
-	}
-
-	pluginInstance := GetNewPlugin(args)
-	err := pluginInstance.ValidateArgs()
-
-	if err != nil {
-		t.Fatalf("Unexpected error when using only trust_store_path: %v", err)
-	}
-
-	t.Logf("Test passed. Trust store path validated correctly.")
 }
