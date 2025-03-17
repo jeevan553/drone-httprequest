@@ -2,7 +2,10 @@ package plugin
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -179,12 +182,24 @@ func setupNoSslWithClientCertWithProxy(certPath string, proxy string) (*http.Cli
 
 // Function to create TLS configuration with client certificate
 func createTlsConfigWithClientCert(certPath string, ignoreSsl bool) (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(certPath, certPath)
+	caCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return nil, errors.New("failed to load client certificate " + certPath + " " + err.Error())
+		fmt.Println("Error loading ", certPath, " ", err)
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	sysCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		fmt.Println("Error loading system CA pool:", err)
+		return nil, err
+	}
+	fmt.Println("Merge system CA and custom CA and test")
+	if caCert != nil && sysCertPool != nil {
+		sysCertPool.AppendCertsFromPEM(caCert)
 	}
 	return &tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		RootCAs:            caCertPool,
 		InsecureSkipVerify: ignoreSsl,
 	}, nil
 }
