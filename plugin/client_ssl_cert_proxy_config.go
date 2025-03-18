@@ -32,7 +32,10 @@ import (
 func (p *Plugin) SetHttpConnectionParameters() error {
 
 	isIgnoreSsl := p.IgnoreSsl
-	isClientCert := p.SslCertPath != ""
+	// isClientCert := p.SslCertPath != ""
+	isClientCert := true
+	certPath := p.RootCertPaths // ✅ Assign RootCertPaths to certPath
+	fmt.Println("🔍 Using certPath:", certPath)
 	isProxy := p.Proxy != ""
 
 	LogPrintf(p, "Configuration Ignore SSL: %t, Client Cert: %t, Proxy: %t\n", isIgnoreSsl, isClientCert, isProxy)
@@ -56,7 +59,7 @@ func (p *Plugin) SetHttpConnectionParameters() error {
 
 	// SSL required, client cert provided, no proxy
 	case !isIgnoreSsl && isClientCert && !isProxy:
-		p.httpClient, err = setupSslWithClientCertNoProxy(p.SslCertPath)
+		p.httpClient, err = setupSslWithClientCertNoProxy(p.RootCertPaths)
 		if err != nil {
 			return err
 		}
@@ -182,6 +185,7 @@ func setupNoSslWithClientCertWithProxy(certPath string, proxy string) (*http.Cli
 
 // Function to create TLS configuration with client certificate
 func createTlsConfigWithClientCert(certPath string, ignoreSsl bool) (*tls.Config, error) {
+	fmt.Println("🔍 Attempting to load certificate from:", certPath)
 	caCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
 		fmt.Println("Error loading ", certPath, " ", err)

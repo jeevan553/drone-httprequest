@@ -359,47 +359,47 @@ func (p *Plugin) GetNewHttpClient() {
 		Timeout: p.TimeOutDuration,
 	}
 }
-
-// func (p *Plugin) SetSslCert() {
-// 	if p.AuthCert == "" || p.IgnoreSsl {
-// 		return
-// 	}
-// }
-
 func (p *Plugin) SetSslCert() {
-	fmt.Println("370")
-	if p.IgnoreSsl {
+	if p.AuthCert == "" || p.IgnoreSsl {
 		return
-	}
-
-	tlsConfig := &tls.Config{}
-
-	// ✅ Load Root CA Certificates (if provided)
-	if p.RootCertPaths != "" {
-		fmt.Println("378")
-		caCertPool, err := p.LoadCACertificates(p.RootCertPaths)
-		if err != nil {
-			fmt.Println("Failed to load CA certificates:", err)
-			return
-		}
-		tlsConfig.RootCAs = caCertPool
-	}
-
-	// Load Trust Store (JKS) - Placeholder (Java Keystore Handling Required)
-	if p.TrustStorePath != "" && p.TrustStorePassword != "" {
-		fmt.Println("399")
-		LogPrintln(p, "Loading trust store from:", p.TrustStorePath)
-		// ⚠️ Note: JKS handling requires additional logic (Java Keystore parsing)
-	}
-
-	// Apply the TLS Config
-	p.httpClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
 	}
 }
 
+/*
+	func (p *Plugin) SetSslCert() {
+		fmt.Println("370")
+		if p.IgnoreSsl {
+			return
+		}
+
+		tlsConfig := &tls.Config{}
+
+		// ✅ Load Root CA Certificates (if provided)
+		if p.RootCertPaths != "" {
+			fmt.Println("378")
+			caCertPool, err := p.LoadCACertificates(p.RootCertPaths)
+			if err != nil {
+				fmt.Println("Failed to load CA certificates:", err)
+				return
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		// Load Trust Store (JKS) - Placeholder (Java Keystore Handling Required)
+		if p.TrustStorePath != "" && p.TrustStorePassword != "" {
+			fmt.Println("399")
+			LogPrintln(p, "Loading trust store from:", p.TrustStorePath)
+			// ⚠️ Note: JKS handling requires additional logic (Java Keystore parsing)
+		}
+
+		// Apply the TLS Config
+		p.httpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
+	}
+*/
 func (p *Plugin) SetAuthBasic() error {
 
 	if p.AuthBasic == "" {
