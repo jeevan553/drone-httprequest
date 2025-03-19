@@ -32,8 +32,9 @@ import (
 func (p *Plugin) SetHttpConnectionParameters() error {
 
 	isIgnoreSsl := p.IgnoreSsl
-	// isClientCert := p.SslCertPath != ""
-	isClientCert := true
+	p.SetCertPath()
+	isClientCert := p.SslCertPath != ""
+	// isClientCert := true
 	certPath := p.RootCertPaths // ✅ Assign RootCertPaths to certPath
 	fmt.Println("🔍 Using certPath:", certPath)
 	isProxy := p.Proxy != ""

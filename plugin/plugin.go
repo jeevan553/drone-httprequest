@@ -718,5 +718,16 @@ func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) 
 	return caCertPool, nil
 }
 
+func (p *Plugin) SetCertPath() {
+	// Check if SslCertPath is empty
+	if p.SslCertPath == "" {
+		fmt.Println("ℹ️ SslCertPath is empty, using RootCertPaths instead.")
+		p.SslCertPath = p.RootCertPaths
+	}
+
+	// Debugging output
+	fmt.Println("🔍 Final Certificate Path:", p.SslCertPath)
+}
+
 //
 //
