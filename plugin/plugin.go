@@ -53,9 +53,6 @@ type PluginInputParams struct {
 	MultiPartName      string `envconfig:"PLUGIN_MULTIPART_NAME"`
 	WrapAsMultipart    bool   `envconfig:"PLUGIN_WRAP_AS_MULTIPART"`
 	SslCertPath        string `envconfig:"PLUGIN_SSL_CERT_PATH"`
-	RootCertPaths      string `envconfig:"PLUGIN_ROOT_CERT_PATHS"`      // ✅ New Parameter (comma-separated cert paths)
-	TrustStorePath     string `envconfig:"PLUGIN_TRUST_STORE_PATH"`     // ✅ New Parameter (custom trust store path)
-	TrustStorePassword string `envconfig:"PLUGIN_TRUST_STORE_PASSWORD"` /// ✅ New Parameter (TrustStorePassword)
 }
 
 type PluginProcessingInfo struct {
@@ -365,41 +362,6 @@ func (p *Plugin) SetSslCert() {
 	}
 }
 
-/*
-	func (p *Plugin) SetSslCert() {
-		fmt.Println("370")
-		if p.IgnoreSsl {
-			return
-		}
-
-		tlsConfig := &tls.Config{}
-
-		// ✅ Load Root CA Certificates (if provided)
-		if p.RootCertPaths != "" {
-			fmt.Println("378")
-			caCertPool, err := p.LoadCACertificates(p.RootCertPaths)
-			if err != nil {
-				fmt.Println("Failed to load CA certificates:", err)
-				return
-			}
-			tlsConfig.RootCAs = caCertPool
-		}
-
-		// Load Trust Store (JKS) - Placeholder (Java Keystore Handling Required)
-		if p.TrustStorePath != "" && p.TrustStorePassword != "" {
-			fmt.Println("399")
-			LogPrintln(p, "Loading trust store from:", p.TrustStorePath)
-			// ⚠️ Note: JKS handling requires additional logic (Java Keystore parsing)
-		}
-
-		// Apply the TLS Config
-		p.httpClient = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
-		}
-	}
-*/
 func (p *Plugin) SetAuthBasic() error {
 
 	if p.AuthBasic == "" {
@@ -477,12 +439,6 @@ func (p *Plugin) ValidateArgs() error {
 	if p.ValidateAuthCert() != nil {
 		LogPrintln(p, "certificate file not found")
 		return errors.New("certificate file not found")
-	}
-
-	// ✅ Ensure only one type of certificate parameter is used
-	if p.RootCertPaths != "" && p.TrustStorePath != "" {
-		fmt.Println("493")
-		return errors.New("Cannot use both root_cert_paths and trust_store_path at the same time")
 	}
 
 	return nil
@@ -709,24 +665,13 @@ func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) 
 		caCert, err := os.ReadFile(certPath)
 		if err != nil {
 			fmt.Println("Failed to read root certificate:", certPath, err)
-			continue
+			return caCertPool, err
 		}
 		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
 			fmt.Println("Failed to append root certificate:", certPath)
 		}
 	}
 	return caCertPool, nil
-}
-
-func (p *Plugin) SetCertPath() {
-	// Check if SslCertPath is empty
-	if p.SslCertPath == "" {
-		fmt.Println("ℹ️ SslCertPath is empty, using RootCertPaths instead.")
-		p.SslCertPath = p.RootCertPaths
-	}
-
-	// Debugging output
-	fmt.Println("🔍 Final Certificate Path:", p.SslCertPath)
 }
 
 //

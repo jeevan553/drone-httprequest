@@ -32,10 +32,9 @@ import (
 func (p *Plugin) SetHttpConnectionParameters() error {
 
 	isIgnoreSsl := p.IgnoreSsl
-	p.SetCertPath()
 	isClientCert := p.SslCertPath != ""
 	// isClientCert := true
-	certPath := p.RootCertPaths // ✅ Assign RootCertPaths to certPath
+	certPath := p.SslCertPath
 	fmt.Println("🔍 Using certPath:", certPath)
 	isProxy := p.Proxy != ""
 
@@ -60,7 +59,7 @@ func (p *Plugin) SetHttpConnectionParameters() error {
 
 	// SSL required, client cert provided, no proxy
 	case !isIgnoreSsl && isClientCert && !isProxy:
-		p.httpClient, err = setupSslWithClientCertNoProxy(p.RootCertPaths)
+		p.httpClient, err = setupSslWithClientCertNoProxy(p.SslCertPath)
 		if err != nil {
 			return err
 		}

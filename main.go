@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"x/y/plugin"
+	"harness-community/drone-httprequest/plugin"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
