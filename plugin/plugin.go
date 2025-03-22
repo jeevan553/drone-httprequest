@@ -69,6 +69,7 @@ type PluginProcessingInfo struct {
 	proxyUrl                 *url.URL
 	uploadFileAbsolutePath   string
 	IsSuppressLogs           bool
+	IsIgnoreWriteFiles       bool
 }
 
 type PluginExecResultsCard struct {
@@ -304,6 +305,9 @@ func (p *Plugin) StoreHttpResponseResults() error {
 		p.ResponseContent = ""
 	}
 
+	if p.IsIgnoreWriteFiles {
+		return nil
+	}
 	var kvPairs = []EnvKvPair{
 		{"RESPONSE_STATUS", p.ResponseStatus, false},
 		{"RESPONSE_FILE", p.OutputFile, false},

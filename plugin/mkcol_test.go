@@ -56,7 +56,7 @@ func TestMKCOLWithLocalWebDAVServer(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestMKCOLWithLocalWebDAVServer"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)

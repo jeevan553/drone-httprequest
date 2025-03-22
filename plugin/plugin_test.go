@@ -118,7 +118,7 @@ func TestGetRequestWithValidResponseBody(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	err := plugin.Run()
 	if err != nil {
 		t.Fatalf("Run() returned an error: %v", err)
@@ -296,7 +296,7 @@ func TestPositiveAuthBasic(t *testing.T) {
 		Args:                 args,
 		PluginProcessingInfo: PluginProcessingInfo{},
 	}
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestPositiveAuthBasic"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
@@ -352,7 +352,7 @@ func TestNegativeAuthBasic(t *testing.T) {
 		Args:                 args,
 		PluginProcessingInfo: PluginProcessingInfo{},
 	}
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestNegativeAuthBasic"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
@@ -404,7 +404,7 @@ func TestGetRequestAndWriteToFile(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestGetRequestAndWriteToFile"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
@@ -465,6 +465,7 @@ func CheckForResponseLogging(t *testing.T, isLogResponse bool) {
 	}
 
 	plugin := GetNewPlugin(args)
+	plugin.IsIgnoreWriteFiles = true
 	if plugin == nil {
 		if isLogResponse {
 			plugin.LogResponse = true
@@ -583,7 +584,7 @@ func runPluginTest(t *testing.T, method, url, body, headers string) string {
 		Args:                 args,
 		PluginProcessingInfo: PluginProcessingInfo{},
 	}
-
+	plugin.IsIgnoreWriteFiles = true
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+method+"\n"+cli)
 	dockerCliCommands = append(dockerCliCommands, "# "+method+"\n"+dockerCli)
@@ -636,7 +637,7 @@ func TestGetRequestWithQuietMode(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestGetRequestWithQuietMode"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
@@ -714,7 +715,7 @@ func TestMultipartFileUpload(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	err = plugin.Run()
 
 	thisTestName := "TestMultipartFileUpload"
@@ -772,7 +773,7 @@ func TestDirectFileUpload(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	thisTestName := "TestDirectFileUpload"
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
@@ -887,7 +888,7 @@ func TestGetRequestWithAcceptType(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
-
+	plugin.IsIgnoreWriteFiles = true
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		acceptHeader := r.Header.Get("Accept")
 		if acceptHeader != expectedAcceptType {
@@ -1012,8 +1013,8 @@ func TestGoodCertificate(t *testing.T) {
 }
 
 func TestBadCertificate(t *testing.T) {
-	goodCertBytes := []byte(BadCert)
-	_, err := checkTlsConfigWithClientCert(goodCertBytes, false)
+	badCertBytes := []byte(BadCert)
+	_, err := checkTlsConfigWithClientCert(badCertBytes, false)
 	if err == nil {
 		t.Fatalf("Bad Cert failed")
 	}
