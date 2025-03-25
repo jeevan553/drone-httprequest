@@ -848,6 +848,7 @@ func TestGetRequestUsingProxyWithPlugin(t *testing.T) {
 	}
 
 	plugin := GetNewPlugin(args)
+	plugin.IsIgnoreWriteFiles = true
 	cli, dockerCli := plugin.EmitCommandLine()
 	emittedCommands = append(emittedCommands, "# "+thisTestName+"\n"+cli)
 	dockerCliCommands = append(dockerCliCommands, "# "+thisTestName+"\n"+dockerCli)
