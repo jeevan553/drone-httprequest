@@ -814,7 +814,7 @@ func TestGetRequestUsingProxyWithoutPlugin(t *testing.T) {
 		t.Fatalf("Failed to read response body: %v", err)
 	}
 
-	fmt.Printf("Response from httpbin: %s\n", body)
+	log.Printf("Response from httpbin: %s\n", body)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Expected status 200, but got %d", resp.StatusCode)
@@ -1023,16 +1023,16 @@ func TestBadCertificate(t *testing.T) {
 
 // Function to create TLS configuration with client certificate
 func checkTlsConfigWithClientCert(caCert []byte, ignoreSsl bool) (*tls.Config, error) {
-	fmt.Println("Attempting to load certificate from:")
+	log.Println("Attempting to load certificate from:")
 
 	// Create a new certificate pool and append the custom CA certificate
 	caCertPool := x509.NewCertPool()
 	if !caCertPool.AppendCertsFromPEM(caCert) {
-		fmt.Println("Failed to append custom CA certificate:")
+		log.Println("Failed to append custom CA certificate:")
 		return nil, fmt.Errorf("failed to append CA certificate")
 	}
 
-	fmt.Println("Successfully loaded custom CA certificate")
+	log.Println("Successfully loaded custom CA certificate")
 
 	// Return TLS configuration with only the custom CA
 	return &tls.Config{

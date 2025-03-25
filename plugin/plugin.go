@@ -265,7 +265,7 @@ func (p *Plugin) IsResponseStatusOk() error {
 
 func (p *Plugin) LogResponseToConsole() {
 	if p.LogResponse {
-		fmt.Println("Writing Response Content to env var")
+		log.Println("Writing Response Content to env var")
 		LogPrintln(p, p.ResponseContent)
 	}
 }
@@ -648,17 +648,15 @@ func (p *PluginInputParams) EmitCommandLine() (string, string) {
 }
 
 func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) {
-	fmt.Println("701")
 	// Load system CA pool
 	sysCertPool, err := x509.SystemCertPool()
 	if err != nil {
-		fmt.Println("Warning: Failed to load system CA certificates:", err)
+		log.Println("Warning: Failed to load system CA certificates:", err)
 		sysCertPool = x509.NewCertPool()
 	}
 
 	// Load custom CA if provided
 	if caCertPaths == "" {
-		fmt.Println("710")
 		return sysCertPool, nil
 	}
 
@@ -668,11 +666,11 @@ func (p *Plugin) LoadCACertificates(caCertPaths string) (*x509.CertPool, error) 
 		certPath = strings.TrimSpace(certPath)
 		caCert, err := os.ReadFile(certPath)
 		if err != nil {
-			fmt.Println("Failed to read root certificate:", certPath, err)
+			log.Println("Failed to read root certificate:", certPath, err)
 			return caCertPool, err
 		}
 		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
-			fmt.Println("Failed to append root certificate:", certPath)
+			log.Println("Failed to append root certificate:", certPath)
 		}
 	}
 	return caCertPool, nil

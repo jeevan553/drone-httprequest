@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"harness-community/drone-httprequest/plugin"
@@ -16,7 +15,6 @@ import (
 )
 
 func main() {
-	fmt.Println("Jeevan Test image")
 	logInit()
 
 	logrus.SetFormatter(new(formatter))
