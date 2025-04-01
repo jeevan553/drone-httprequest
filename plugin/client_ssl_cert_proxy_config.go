@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 )
 
 /*
@@ -36,6 +38,7 @@ func (p *Plugin) SetHttpConnectionParameters() error {
 	isClientCert := p.SslCertPath != ""
 	isProxy := p.Proxy != ""
 
+	fmt.Println("p.keystore", p.KeystorePath)
 	LogPrintf(p, "Configuration Ignore SSL: %t, Client Cert: %t, Proxy: %t\n", isIgnoreSsl, isClientCert, isProxy)
 
 	var err error
@@ -57,14 +60,14 @@ func (p *Plugin) SetHttpConnectionParameters() error {
 
 	// SSL required, client cert provided, no proxy
 	case !isIgnoreSsl && isClientCert && !isProxy:
-		p.httpClient, err = setupSslWithClientCertNoProxy(p.SslCertPath)
+		p.httpClient, err = setupSslWithClientCertNoProxy(p.SslCertPath, p.KeystorePath, p.Password)
 		if err != nil {
 			return err
 		}
 
 	// SSL required, client cert provided, proxy enabled
 	case !isIgnoreSsl && isClientCert && isProxy:
-		p.httpClient, err = setupSslWithClientCertWithProxy(p.SslCertPath, p.Proxy)
+		p.httpClient, err = setupSslWithClientCertWithProxy(p.SslCertPath, p.Proxy, p.KeystorePath, p.Password)
 		if err != nil {
 			return err
 		}
@@ -85,14 +88,14 @@ func (p *Plugin) SetHttpConnectionParameters() error {
 
 	// No SSL, client cert provided, no proxy
 	case isIgnoreSsl && isClientCert && !isProxy:
-		p.httpClient, err = setupNoSslWithClientCertNoProxy(p.SslCertPath)
+		p.httpClient, err = setupNoSslWithClientCertNoProxy(p.SslCertPath, p.KeystorePath, p.Password)
 		if err != nil {
 			return err
 		}
 
 	// No SSL, client cert provided, proxy enabled
 	case isIgnoreSsl && isClientCert && isProxy:
-		p.httpClient, err = setupNoSslWithClientCertWithProxy(p.SslCertPath, p.Proxy)
+		p.httpClient, err = setupNoSslWithClientCertWithProxy(p.SslCertPath, p.Proxy, p.KeystorePath, p.Password)
 		if err != nil {
 			return err
 		}
@@ -119,8 +122,8 @@ func setupSslNoClientCertWithProxy(proxy string) (*http.Client, error) {
 }
 
 // SSL required, client cert provided, no proxy
-func setupSslWithClientCertNoProxy(certPath string) (*http.Client, error) {
-	tlsConfig, err := createTlsConfigWithClientCert(certPath, false)
+func setupSslWithClientCertNoProxy(certPath string, KeystorePath string, Password string) (*http.Client, error) {
+	tlsConfig, err := createTlsConfigWithClientCert(certPath, false, KeystorePath, Password)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +132,8 @@ func setupSslWithClientCertNoProxy(certPath string) (*http.Client, error) {
 }
 
 // SSL required, client cert provided, proxy enabled
-func setupSslWithClientCertWithProxy(certPath string, proxy string) (*http.Client, error) {
-	tlsConfig, err := createTlsConfigWithClientCert(certPath, false)
+func setupSslWithClientCertWithProxy(certPath string, proxy string, KeystorePath string, Password string) (*http.Client, error) {
+	tlsConfig, err := createTlsConfigWithClientCert(certPath, false, KeystorePath, Password)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +162,8 @@ func setupNoSslNoClientCertWithProxy(proxy string) (*http.Client, error) {
 }
 
 // no SSL, client cert provided, no proxy
-func setupNoSslWithClientCertNoProxy(certPath string) (*http.Client, error) {
-	tlsConfig, err := createTlsConfigWithClientCert(certPath, true)
+func setupNoSslWithClientCertNoProxy(certPath string, KeystorePath string, Password string) (*http.Client, error) {
+	tlsConfig, err := createTlsConfigWithClientCert(certPath, true, KeystorePath, Password)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +172,8 @@ func setupNoSslWithClientCertNoProxy(certPath string) (*http.Client, error) {
 }
 
 // no SSL, client cert provided, proxy enabled
-func setupNoSslWithClientCertWithProxy(certPath string, proxy string) (*http.Client, error) {
-	tlsConfig, err := createTlsConfigWithClientCert(certPath, true)
+func setupNoSslWithClientCertWithProxy(certPath string, proxy string, KeystorePath string, Password string) (*http.Client, error) {
+	tlsConfig, err := createTlsConfigWithClientCert(certPath, true, KeystorePath, Password)
 	if err != nil {
 		return nil, err
 	}
@@ -182,20 +185,21 @@ func setupNoSslWithClientCertWithProxy(certPath string, proxy string) (*http.Cli
 }
 
 // Function to create TLS configuration with client certificate
-func createTlsConfigWithClientCert(certPath string, ignoreSsl bool) (*tls.Config, error) {
-	log.Println("Attempting to load certificate from:", certPath)
+func createTlsConfigWithClientCert(certPath string, ignoreSsl bool, KeystorePath string, Password string) (*tls.Config, error) {
 
-	// Read the custom CA certificate
-	caCert, err := ioutil.ReadFile(certPath)
+	certs, err := generateCleanCerts(certPath, KeystorePath, Password)
 	if err != nil {
-		log.Println("Error loading certificate:", certPath, err)
+		fmt.Println("Error:", err)
 		return nil, err
 	}
 
+	fmt.Println("Generated clean-certs.pem:\n", certs)
+	log.Println("Attempting to load certificate from:", certPath)
+
 	// Create a new certificate pool and append the custom CA certificate
 	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(caCert) {
-		log.Println("Failed to append custom CA certificate:", certPath)
+	if !caCertPool.AppendCertsFromPEM([]byte(certs)) {
+		log.Println("Failed to append custom CA certificate:")
 		return nil, fmt.Errorf("failed to append CA certificate")
 	}
 
@@ -206,6 +210,81 @@ func createTlsConfigWithClientCert(certPath string, ignoreSsl bool) (*tls.Config
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: ignoreSsl,
 	}, nil
+}
+
+func generateCleanCerts(certPath, keystorePath, password string) (string, error) {
+	fmt.Println("certPath", certPath)
+	fmt.Println("keystorePath", keystorePath)
+	fmt.Println("password", password)
+
+	exec.Command("keytool", "-delete", "-alias", certPath, "-keystore", keystorePath, "-storepass", password).Run()
+
+	cmd1 := exec.Command("keytool", "-import", "-trustcacerts",
+		"-alias", certPath,
+		"-file", certPath,
+		"-keystore", keystorePath,
+		"-storepass", password,
+		"-noprompt",
+	)
+	cmd1.Stdout = os.Stdout
+	cmd1.Stderr = os.Stderr
+	err := cmd1.Run()
+	if err != nil {
+		return "", fmt.Errorf("error importing certificate: %v", err)
+	}
+	// Step 2: List the contents of the keystore (for debugging, optional)
+	cmd2 := exec.Command("keytool", "-list", "-v", "-keystore", keystorePath, "-storepass", password)
+	cmd2.Stdout = os.Stdout
+	cmd2.Stderr = os.Stderr
+	err = cmd2.Run()
+	if err != nil {
+		return "", fmt.Errorf("error listing keystore: %v", err)
+	}
+
+	// Step 3: Convert JKS to PKCS12 format
+	cmd3 := exec.Command("keytool", "-importkeystore",
+		"-srckeystore", keystorePath,
+		"-srcstoretype", "pkcs12",
+		"-srcstorepass", password,
+		"-destkeystore", "truststore.p12",
+		"-deststoretype", "pkcs12",
+		"-deststorepass", password,
+		"-noprompt",
+	)
+	cmd3.Stdout = os.Stdout
+	cmd3.Stderr = os.Stderr
+	err = cmd3.Run()
+	if err != nil {
+		return "", fmt.Errorf("error converting keystore to PKCS12: %v", err)
+	}
+
+	// Step 4: Extract certificates into certs.pem
+	cmd4 := exec.Command("openssl", "pkcs12", "-in", "truststore.p12", "-out", "certs.pem", "-nokeys", "-passin", fmt.Sprintf("pass:%s", password))
+	cmd4.Stdout = os.Stdout
+	cmd4.Stderr = os.Stderr
+	err = cmd4.Run()
+	if err != nil {
+		return "", fmt.Errorf("error extracting certs.pem: %v", err)
+	}
+
+	// Step 5: Filter certificates into clean-certs.pem
+	cmd5 := exec.Command("awk", "/BEGIN CERTIFICATE/,/END CERTIFICATE/", "certs.pem")
+	output, err := cmd5.Output()
+	if err != nil {
+		return "", fmt.Errorf("error filtering clean-certs.pem: %v", err)
+	}
+	err = ioutil.WriteFile("clean-certs.pem", output, 0644)
+	if err != nil {
+		return "", fmt.Errorf("error writing clean-certs.pem: %v", err)
+
+	}
+	// Read and return the clean-certs.pem contents
+	cleanCerts, err := ioutil.ReadFile("clean-certs.pem")
+	if err != nil {
+		return "", fmt.Errorf("error reading clean-certs.pem: %v", err)
+	}
+
+	return string(cleanCerts), nil
 }
 
 // Function to create HTTP transport with proxy and TLS configuration

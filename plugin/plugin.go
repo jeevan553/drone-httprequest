@@ -53,6 +53,8 @@ type PluginInputParams struct {
 	MultiPartName      string `envconfig:"PLUGIN_MULTIPART_NAME"`
 	WrapAsMultipart    bool   `envconfig:"PLUGIN_WRAP_AS_MULTIPART"`
 	SslCertPath        string `envconfig:"PLUGIN_SSL_CERT_PATH"`
+	KeystorePath       string `envconfig:"PLUGIN_KEYSTORE_PATH"`
+	Password           string `envconfig:"PLUGIN_PASSWORD"`
 }
 
 type PluginProcessingInfo struct {

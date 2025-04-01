@@ -1,10 +1,35 @@
-FROM alpine:3.6 as alpine
+FROM alpine:3.20 AS alpine
 RUN apk add -U --no-cache ca-certificates
 
-FROM alpine:3.6
+FROM alpine:3.20
 ENV GODEBUG netdns=go
+ENV CI=true
 
+# Install OpenJDK and bash
+RUN apk add --no-cache openjdk17 bash openssl
+
+# Debug: Check keytool binary
+RUN ls -l /usr/lib/jvm/java-17-openjdk/bin/keytool && apk add --no-cache file && file /usr/lib/jvm/java-17-openjdk/bin/keytool
+
+# Copy CA certificates
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-ADD release/linux/arm64/plugin /bin/
+# Verify keytool existence
+RUN find /usr/lib/jvm -name keytool
+
+# Ensure keytool is executable
+RUN chmod +x /usr/lib/jvm/java-17-openjdk/bin/keytool
+
+# Verify keytool works
+RUN keytool -help
+
+# Set Java environment variables
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Add the plugin based on the architecture
+ARG TARGETARCH
+ADD release/linux/${TARGETARCH}/plugin /bin/
+
+# Set entrypoint to bash
 ENTRYPOINT ["/bin/plugin"]
